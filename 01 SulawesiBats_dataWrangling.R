@@ -11,14 +11,6 @@ for(lib in wranglingPackages[!wranglingPackages %in% installed.packages()])
   {install.packages(lib,dependencies=TRUE)}
 sapply(wranglingPackages,require,character=TRUE)
 
-### Mengunduh data dari GBIF ------------------------------------------------------------
-indonesia_code <- isocodes[grep("Indonesia", isocodes$name), "code"]
-occ_count(country=indonesia_code) 
-
-# Mencari data Chrioptera
-occ_search(scientificName = "Chiroptera", limit = 20)
-# Tutorial lebih lengkap ada di https://ropensci.org/tutorials/rgbif_tutorial/
-
 # Wrangling species occurrence data downloaded from VertNet-------------------------------
 sulawesi_bat <- read.delim("ChiropteraSpecimenSulawesi.txt",header=TRUE)
 
@@ -536,7 +528,40 @@ sulbat$specificepithet<-factor(sulbat$specificepithet)
 sulbat$scientificname<-factor(sulbat$scientificname)
 levels(sulbat$specificepithet)
 
-# write new clean data set
-write.csv(sulbat,"SulawesiBat_clean.csv")
+# also, recode species name to only include genus and specific epithet, without subspecies
+sulbat<-mutate(sulbat,
+               speciesname = fct_recode(scientificname
+                                        ,"Emballonura alecto" = "Emballonura alecto alecto"
+                                        ,"Cynopterus brachyotis" = "Cynopterus brachyotis brachyotis"
+                                        ,"Emballonura nigrescens" = "Emballonura nigrescens papuanus"
+                                        ,"Hipposideros ater" = "Hipposideros ater saevus"
+                                        ,"Hipposideros cervinus" = "Hipposideros cervinus cervinus"
+                                        ,"Hipposideros diadema" = "Hipposideros diadema speculator"
+                                        ,"Hipposideros dinops" = "Hipposideros dinops speculator"
+                                        ,"Hipposideros galeritus" = "Hipposideros galeritus celebensis"
+                                        ,"Macroglossus minimus" = "Macroglossus minimus lagochilus"
+                                        ,"Megaderma spasma" = "Megaderma spasma celebensis"
+                                        ,"Miniopterus schreibersii" = "Miniopterus schreibersii blepotis"
+                                        ,"Miniopterus tristis" = "Miniopterus tristis celebensis"
+                                        ,"Mosia nigrescens" = "Mosia nigrescens papuana"
+                                        ,"Myotis ater" = "Myotis ater ater"
+                                        ,"Myotis formosus" = "Myotis formosus weberi"
+                                        ,"Myotis moluccarum" = "Myotis moluccarum moluccarum" 
+                                        ,"Nyctimene cephalotes" = "Nyctimene cephalotes cephalotes"
+                                        ,"Nyctimene cephalotes" = "Nyctimene cephalotes aplini"
+                                        ,"Pipistrellus tenuis" = "Pipistrellus tenuis sewalanus"
+                                        ,"Pipistrellus tenuis" = "Pipistrellus tenuis sewelanus"
+                                        ,"Pteropus alecto" = "Pteropus alecto alecto"
+                                        ,"Rhinolophus borneensis" = "Rhinolophus borneensis celebensis"
+                                        ,"Rhinolophus celebensis" = "Rhinolophus celebensis celebensis"
+                                        ,"Rhinolophus euryotis" = "Rhinolophus euryotis tatar"
+                                        ,"Rhinolophus philippinensis" = "Rhinolophus philippinensis maros"
+                                        ,"Rousettus amplexicaudatus" = "Rousettus amplexicaudatus amplexicaudatus")
+)
+levels(sulbat$speciesname)
+glimpse(sulbat)
 
+# write new clean data set
+setwd("D:/TAMBORA/SkrpDat/14 Event - Warung Kopi Biodiverksripsi/warkopBiodiverskripsi")
+write.csv(sulbat,"SulawesiBat_cleaned.csv")
 

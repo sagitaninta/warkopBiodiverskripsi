@@ -1,0 +1,118 @@
+---
+title: "Warung Kopi Biodiverskripsi: Eksplorasi Data Perjumpaan"
+author: "Sabhrina G. Aninta"
+date: "23 March 2019"
+mainfont: Calibri Light
+output:
+  html_document: default
+---
+
+#### Mengunduh Data Perjumpaan dari Database Daring 
+
+Untuk mendapatkan data perjumpaan, kita bisa mengunduh data dari berbagai macam database daring. Dalam contoh ini, kita akan menggunakan data dari **GBIF**. Untuk mengunduh data dari GBIF, kita perlu melakukan registrasi terlebih dahulu sebagai user. Setelah melakukan registrasi, kita bisa mengunduh data yang kita perlukan dengan memanfaatkan query di GBIF.
+
+Karena mengunduh data mungkin lama, saya telah menyiapkan set data yang telah diunduh untuk digunakan langsung dalam lokakarya ini. Silakan buka set data saya di 
+
+Kita juga dapat mengunduh data GBIF menggunakan R melalui package [`rgbif`](https://www.gbif.org/tool/81747/rgbif).
+
+```{r gbifDownload}
+library(rgbif)
+
+## mencari data perjumpaan
+occ_search(scientificName = "Cynopterus brachyotis", limit = 20)
+chiropteraID<-occ_search(scientificName = "Chiroptera", country = "ID", limit=20)
+```
+
+Kita juga dapat membersihkan data dan mengunduh data dari GBIF menggunakan R. Lebih lengkapnya dapat dilihat dalam laman [ini](https://ropensci.github.io/rgbif/articles/index.html)
+
+#### Eksplorasi Data
+
+Salah satu cara eksplorasi data adalah melihat variasi dalam data. Dalam sesi ini, kita akan mengeksplorasi data yang telah dibersihkan.
+
+```{r sulbat}
+sulbat<-read.csv("SulawesiBat_cleaned.csv")
+
+library(dplyr)
+glimpse(sulbat)
+
+```
+
+Tampak bahwa dalam data perjumpaan, sebagian besar data berjenis faktor; tidak ada data angka kontinu. Data dapat dikelompokkan dalam beberapa kategori.
+
+```{r sulbatVisual}
+library(ggplot2)
+ggplot(data=sulbat) +
+  geom_bar(aes(x=year))
+```
+
+Ada 213 data perjumpaan yang dihilangkan karena memuat data yang tidak dapat diplotkan ke dalam grafik batang. Dari eksplorasi manual angka-angka ini dengan `dplyr::count()`, tampak bahwa nilai tersebut adalah `NA`. Untuk menghilangkan pesan peringatan keberadaan NA, kita dapat menghilangkan nilai `NA` dalam grafik dengan `na.rm=TRUE`.
+
+```{r sulbatVisual2}
+ggplot(data=sulbat) +
+  geom_bar(aes(x=year), na.rm = T)
+```
+
+Tampak bahwa ada beberapa nilai yang sangat kecil, kita bisa melihat apakah ada data di area tersebut dengan mendefinisikan sumbu y dari 0 hingga 50 data perjumpaan.
+
+```{r sulbatVisualZoomIn}
+ggplot(data=sulbat) +
+  geom_bar(aes(x=year), na.rm = T)+
+  coord_cartesian(ylim=c(0,50))
+```
+
+Distribusi data berdasarkan tahun tampak sangat bias di pertengahan tahun 1970an dan spesimen tidak merata ada di setiap tahun. Grafik tampak kosong sehingga tidak ada gunanya menskala tahun. Tahun bisa diubah menjadi faktor yang bersifat kategori alih-alih angka kuantitatif.
+
+```{r sulbatVisualCategory}
+## untuk menghilangkan NA
+sulbatYear<-sulbat%>%filter(sulbat$year!="NA")
+
+## untuk ngeplot ulang dengan tahun sebagai faktor
+ggplot(data=sulbatYear) +
+  geom_bar(aes(x=as.factor(year), fill=family)) ## pakai family karena spesies terlalu banyak
+
+## menghitung spesies per tahun
+sulbatYear %>% group_by(year) %>% count(speciesname)
+ggplot(sulbatYear %>% group_by(year) %>% count(speciesname))+
+  geom_bar(aes(x=(as.factor(year))))
+
+```
+
+Tapi, data tahun tidak tepat ditampilkan demikian karena akan menimbulkan persepsi distribusi kekayaan spesies yang berubah seiring waktu padahal ada bias pencuplikan. Kita ambil saja interval tahun yang cukup kontinu, yakni dari tahun 1972 sampai dengan 1976.
+
+```{r yearSulbat}
+sulbatYear2<-sulbat %>% mutate(year=ifelse(year<1972|year>1976,NA,year))
+sulbatYear2 %>% group_by(year) %>% count(speciesname)
+ggplot(data=sulbatYear2) +
+  geom_bar(aes(x=year), na.rm = T) +
+  facet_wrap(~speciesname)
+
+ggplot(sulbatYear2 %>% group_by(year) %>% count(speciesname)) +
+  geom_bar(aes(x=year), na.rm=T)
+
+# Ada apa di tahun itu kenapa begitu runut ada koleksi?
+sulbatYear2%>%group_by(institutioncode)%>%summarise(n=n())
+sulbatYear2%>%group_by(recordedby)%>%summarise(n=n())
+
+sulbatYear2 %>% group_by(institutioncode) %>% count(recordedby)
+
+```
+
+Kita dapat pula melihat perubahan banyaknya jumlah spesies yang dikoleksi seiring waktu.
+
+```{r freqpoly}
+ggplot(sulbatYear2) +
+   geom_count(aes(x=year,y=speciesname),na.rm = T)
+
+## Spesies tampak terlalu banyak sebagai kategori, mari kita gunakan family
+sulbatYear %>% count(year,family) %>% ggplot()+
+  geom_tile(aes(x=as.factor(year),y=family,fill=n))
+
+```
+
+## Merapikan Data
+
+Contoh-contoh sebelumnya merupakan data yang sudah dirapikan. Bagaimana dengan data yang belum dirapikan? Apa maksud data yang belum dirapikan dan bagaimana cara membuat data rapi? Saya memberikan informasi tentang bagaimana data dirapikan di "01 SulawesiBats_dataWrangling.R". Data yang rapi lebih mudah dianalisis dan dipresentasikan dalam bentuk yang mudah dibaca. Perhatikan bahwa selama analisis kita melakukan transformasi data.
+
+
+*Cheatsheet untuk membuat dokumen Rmarkdown dapat dilihat di [sini](https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf)*
+*Untuk informasi lebih lanjut, hubungi sagitaninta[at]gmail.com*
